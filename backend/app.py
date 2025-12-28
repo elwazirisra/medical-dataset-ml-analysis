@@ -26,8 +26,7 @@ def load_models():
     """Load all trained models and metadata"""
     # Get the absolute path to models directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(current_dir)
-    models_dir = os.path.join(project_root, 'models')
+    models_dir = os.path.join(current_dir, 'models')
     
     print(f"Looking for models in: {models_dir}")
     

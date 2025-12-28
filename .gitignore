@@ -9,11 +9,8 @@ venv/
 ENV/
 .venv
 
-# Models and data
-# Note: We need to commit model files for deployment, so they're NOT ignored
-# models/
-# *.pkl
-# *.joblib
+
+
 
 # Streamlit
 .streamlit/
