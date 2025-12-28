@@ -9,7 +9,7 @@ venv/
 ENV/
 .venv
 
-# Models and data
+
 
 
 # Streamlit
