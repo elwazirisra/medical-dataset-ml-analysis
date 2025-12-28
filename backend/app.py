@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from sklearn.datasets import load_breast_cancer
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
 
