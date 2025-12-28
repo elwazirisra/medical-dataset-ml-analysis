@@ -11,7 +11,14 @@ from sklearn.datasets import load_breast_cancer
 import os
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for React frontend
+
+# CORS configuration - update with your frontend URL in production
+import os
+frontend_url = os.environ.get('FRONTEND_URL', '*')
+if frontend_url == '*':
+    CORS(app)  # Allow all origins (development only)
+else:
+    CORS(app, resources={r"/api/*": {"origins": [frontend_url]}})
 
 # Load models and metadata
 def load_models():
@@ -279,9 +286,17 @@ if __name__ == '__main__':
     print("\n" + "="*50 + "\n")
     
     try:
-        print(f"\n🚀 Starting Flask server on http://127.0.0.1:{port}")
-        print("   Press Ctrl+C to stop the server\n")
-        app.run(debug=True, port=port, host='127.0.0.1', use_reloader=False)
+        # Get port from environment variable (for production) or use found port
+        port = int(os.environ.get('PORT', port))
+        host = os.environ.get('HOST', '127.0.0.1')
+        debug = os.environ.get('FLASK_ENV') != 'production'
+        
+        print(f"\n🚀 Starting Flask server on http://{host}:{port}")
+        if not debug:
+            print("   Production mode")
+        else:
+            print("   Press Ctrl+C to stop the server\n")
+        app.run(debug=debug, port=port, host=host, use_reloader=False)
     except OSError as e:
         if "Address already in use" in str(e):
             print(f"\n❌ Port {port} is already in use!")
