@@ -7,32 +7,31 @@ from flask_cors import CORS
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.datasets import load_breast_cancer
 import os
-from flask_cors import CORS
 
+# Initialize Flask app
 app = Flask(__name__)
 
-# CORS configuration - update with your frontend URL in production
-import os
+# Enable CORS
 frontend_url = os.environ.get('FRONTEND_URL', '*')
 if frontend_url == '*':
-    CORS(app)  # Allow all origins (development only)
+    CORS(app)  # Allow all origins (dev)
 else:
     CORS(app, resources={r"/api/*": {"origins": [frontend_url]}})
 
-# Load models and metadata
+# -----------------------------
+# Load models
+# -----------------------------
 def load_models():
     """Load all trained models and metadata"""
-    # Get the absolute path to models directory
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    models_dir = os.path.join(current_dir, 'models')
-    
+    models_dir = os.path.join(current_dir, 'models')  # models folder inside backend
+
     print(f"Looking for models in: {models_dir}")
-    
+
     if not os.path.exists(models_dir):
-        raise FileNotFoundError(f"Models directory not found: {models_dir}. Please run 'python train_models.py' first.")
-    
+        raise FileNotFoundError(f"Models directory not found: {models_dir}")
+
     required_files = [
         'logistic_regression.pkl',
         'random_forest.pkl',
@@ -41,73 +40,44 @@ def load_models():
         'feature_stats.pkl',
         'top_features.pkl'
     ]
-    
-    missing_files = []
-    for file in required_files:
-        file_path = os.path.join(models_dir, file)
-        if not os.path.exists(file_path):
-            missing_files.append(file)
-    
-    if missing_files:
-        raise FileNotFoundError(
-            f"Missing model files: {', '.join(missing_files)}. "
-            f"Please run 'python train_models.py' first."
-        )
-    
-    try:
-        print("Loading models...")
-        # Try loading with compatibility mode for scikit-learn version differences
-        try:
-            models = {
-                'logistic_regression': joblib.load(os.path.join(models_dir, 'logistic_regression.pkl')),
-                'random_forest': joblib.load(os.path.join(models_dir, 'random_forest.pkl')),
-                'gradient_boosting': joblib.load(os.path.join(models_dir, 'gradient_boosting.pkl'))
-            }
-        except (ValueError, TypeError) as e:
-            if 'incompatible dtype' in str(e) or 'pickle' in str(e).lower():
-                print("⚠️  Model compatibility issue detected. This usually means models were saved with a different scikit-learn version.")
-                print("   Retraining models to fix compatibility...")
-                raise Exception("Model compatibility error. Please retrain models by running: python train_models.py")
-            else:
-                raise
-        
-        print("Loading metadata...")
-        metadata = joblib.load(os.path.join(models_dir, 'metadata.pkl'))
-        feature_stats = joblib.load(os.path.join(models_dir, 'feature_stats.pkl'))
-        top_features = joblib.load(os.path.join(models_dir, 'top_features.pkl'))
-        
-        return models, metadata, feature_stats, top_features
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f"Model file not found: {e}. Please run 'python train_models.py' first.")
-    except Exception as e:
-        if "Model compatibility error" in str(e):
-            raise
-        raise Exception(f"Error loading models: {e}")
 
-# Load models once at startup
+    missing_files = [f for f in required_files if not os.path.exists(os.path.join(models_dir, f))]
+    if missing_files:
+        raise FileNotFoundError(f"Missing model files: {', '.join(missing_files)}")
+
+    # Load models
+    models = {
+        'logistic_regression': joblib.load(os.path.join(models_dir, 'logistic_regression.pkl')),
+        'random_forest': joblib.load(os.path.join(models_dir, 'random_forest.pkl')),
+        'gradient_boosting': joblib.load(os.path.join(models_dir, 'gradient_boosting.pkl'))
+    }
+
+    # Load metadata
+    metadata = joblib.load(os.path.join(models_dir, 'metadata.pkl'))
+    feature_stats = joblib.load(os.path.join(models_dir, 'feature_stats.pkl'))
+    top_features = joblib.load(os.path.join(models_dir, 'top_features.pkl'))
+
+    return models, metadata, feature_stats, top_features
+
+# Load models at startup
 try:
     models, metadata, feature_stats, top_features = load_models()
     print("✅ Models loaded successfully!")
 except Exception as e:
     print(f"❌ Error loading models: {e}")
-    models = None
-    metadata = None
-    feature_stats = None
-    top_features = None
+    models = metadata = feature_stats = top_features = None
 
+# -----------------------------
+# API Endpoints
+# -----------------------------
 @app.route('/api/health', methods=['GET'])
 def health():
-    """Health check endpoint"""
-    if models is None:
-        return jsonify({'status': 'error', 'message': 'Models not loaded'}), 503
-    return jsonify({'status': 'healthy'})
+    return jsonify({'status': 'healthy' if models else 'error', 'message': 'Models not loaded' if not models else 'ok'})
 
 @app.route('/api/metadata', methods=['GET'])
 def get_metadata():
-    """Get dataset metadata"""
-    if metadata is None:
-        return jsonify({'error': 'Models not loaded. Please run python train_models.py first.'}), 503
-    
+    if not metadata:
+        return jsonify({'error': 'Models not loaded'}), 503
     return jsonify({
         'feature_names': metadata['feature_names'],
         'target_names': metadata['target_names'],
@@ -119,197 +89,89 @@ def get_metadata():
 
 @app.route('/api/feature-stats', methods=['GET'])
 def get_feature_stats():
-    """Get feature statistics for slider ranges"""
-    if feature_stats is None:
-        return jsonify({'error': 'Models not loaded. Please run python train_models.py first.'}), 503
+    if not feature_stats:
+        return jsonify({'error': 'Models not loaded'}), 503
     return jsonify(feature_stats)
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
-    """Make prediction with a single model"""
-    if models is None:
-        return jsonify({'error': 'Models not loaded. Please run python train_models.py first.'}), 503
-    
+    if not models:
+        return jsonify({'error': 'Models not loaded'}), 503
+
     data = request.json
     model_name = data.get('model', 'logistic_regression')
     feature_values = data.get('features', {})
-    
+
     if model_name not in models:
         return jsonify({'error': f'Model {model_name} not found'}), 400
-    
-    # Prepare input array
+
     all_features = metadata['feature_names']
-    input_array = np.zeros(len(all_features))
-    
-    for i, feature in enumerate(all_features):
-        if feature in feature_values:
-            input_array[i] = feature_values[feature]
-        else:
-            # Use mean value if not provided
-            input_array[i] = feature_stats[feature]['mean']
-    
-    # Make prediction
+    input_array = np.array([feature_values.get(f, feature_stats[f]['mean']) for f in all_features]).reshape(1, -1)
+
     model = models[model_name]
-    prediction = model.predict(input_array.reshape(1, -1))[0]
-    probabilities = model.predict_proba(input_array.reshape(1, -1))[0]
-    
-    # Get feature importance/coefficients if available
+    prediction = int(model.predict(input_array)[0])
+    probabilities = model.predict_proba(input_array)[0]
+
+    # Feature importance
     feature_importance = None
     if model_name == 'logistic_regression':
         coef = model.named_steps['classifier'].coef_[0]
-        feature_importance = {
-            feature: float(coef[i]) 
-            for i, feature in enumerate(all_features)
-        }
+        feature_importance = {f: float(coef[i]) for i, f in enumerate(all_features)}
     elif model_name in ['random_forest', 'gradient_boosting']:
         importance = model.named_steps['classifier'].feature_importances_
-        feature_importance = {
-            feature: float(importance[i]) 
-            for i, feature in enumerate(all_features)
-        }
-    
+        feature_importance = {f: float(importance[i]) for i, f in enumerate(all_features)}
+
     return jsonify({
-        'prediction': int(prediction),
-        'probabilities': {
-            'benign': float(probabilities[1]),
-            'malignant': float(probabilities[0])
-        },
+        'prediction': prediction,
+        'probabilities': {'benign': float(probabilities[0]), 'malignant': float(probabilities[1])},
         'feature_importance': feature_importance
     })
 
 @app.route('/api/predict-all', methods=['POST'])
 def predict_all():
-    """Get predictions from all models"""
-    if models is None:
-        return jsonify({'error': 'Models not loaded. Please run python train_models.py first.'}), 503
-    
+    if not models:
+        return jsonify({'error': 'Models not loaded'}), 503
+
     data = request.json
     feature_values = data.get('features', {})
-    
-    # Prepare input array
     all_features = metadata['feature_names']
-    input_array = np.zeros(len(all_features))
-    
-    for i, feature in enumerate(all_features):
-        if feature in feature_values:
-            input_array[i] = feature_values[feature]
-        else:
-            input_array[i] = feature_stats[feature]['mean']
-    
+    input_array = np.array([feature_values.get(f, feature_stats[f]['mean']) for f in all_features]).reshape(1, -1)
+
     results = {}
-    
     for model_name, model in models.items():
-        prediction = model.predict(input_array.reshape(1, -1))[0]
-        probabilities = model.predict_proba(input_array.reshape(1, -1))[0]
-        
-        # Get feature importance
+        prediction = int(model.predict(input_array)[0])
+        probabilities = model.predict_proba(input_array)[0]
+
+        # Feature importance
         feature_importance = None
         if model_name == 'logistic_regression':
             coef = model.named_steps['classifier'].coef_[0]
-            feature_importance = {
-                feature: float(coef[i]) 
-                for i, feature in enumerate(all_features)
-            }
+            feature_importance = {f: float(coef[i]) for i, f in enumerate(all_features)}
         elif model_name in ['random_forest', 'gradient_boosting']:
             importance = model.named_steps['classifier'].feature_importances_
-            feature_importance = {
-                feature: float(importance[i]) 
-                for i, feature in enumerate(all_features)
-            }
-        
+            feature_importance = {f: float(importance[i]) for i, f in enumerate(all_features)}
+
         results[model_name] = {
-            'prediction': int(prediction),
-            'probabilities': {
-                'benign': float(probabilities[1]),
-                'malignant': float(probabilities[0])
-            },
+            'prediction': prediction,
+            'probabilities': {'benign': float(probabilities[0]), 'malignant': float(probabilities[1])},
             'feature_importance': feature_importance
         }
-    
+
     return jsonify(results)
 
 @app.route('/api/dataset', methods=['GET'])
 def get_dataset():
-    """Get the full dataset for visualization"""
-    data = load_breast_cancer()
-    df = pd.DataFrame(data.data, columns=data.feature_names)
-    df['target'] = data.target
-    
-    # Convert to JSON-serializable format
-    dataset_json = {
-        'features': data.feature_names.tolist(),
-        'data': df.values.tolist(),
-        'target': data.target.tolist()
-    }
-    
-    return jsonify(dataset_json)
+    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data/raw/breast_cancer_wisconsin.csv'))
+    df = data.copy()
+    return jsonify({
+        'features': df.columns.tolist(),
+        'data': df.values.tolist()
+    })
 
+# -----------------------------
+# Start server
+# -----------------------------
 if __name__ == '__main__':
-    import socket
-    
-    def find_free_port(start_port=5000, max_attempts=10):
-        """Find a free port starting from start_port"""
-        for port in range(start_port, start_port + max_attempts):
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(('127.0.0.1', port))
-                    return port
-            except OSError:
-                continue
-        raise RuntimeError(f"Could not find a free port in range {start_port}-{start_port + max_attempts}")
-    
-    print("\n" + "="*50)
-    print("Starting Flask Backend Server")
-    print("="*50)
-    
-    if models is None:
-        print("\n⚠️  WARNING: Models not loaded!")
-        print("The server will start but API endpoints will return errors.")
-        print("Please run 'python train_models.py' first.\n")
-    else:
-        print("\n✅ Server ready!")
-    
-    # Try to find a free port
-    port = find_free_port(5000)
-    if port != 5000:
-        print(f"⚠️  Port 5000 is in use, using port {port} instead")
-        print("   (On macOS, you may need to disable AirPlay Receiver)")
-    
-    print(f"Backend API available at: http://localhost:{port}")
-    print("API endpoints:")
-    print("  - GET  /api/health")
-    print("  - GET  /api/metadata")
-    print("  - GET  /api/feature-stats")
-    print("  - POST /api/predict")
-    print("  - POST /api/predict-all")
-    print("  - GET  /api/dataset")
-    print("\n" + "="*50 + "\n")
-    
-    try:
-        # Get port from environment variable (for production) or use found port
-        port = int(os.environ.get('PORT', port))
-        host = os.environ.get('HOST', '127.0.0.1')
-        debug = os.environ.get('FLASK_ENV') != 'production'
-        
-        print(f"\n🚀 Starting Flask server on http://{host}:{port}")
-        if not debug:
-            print("   Production mode")
-        else:
-            print("   Press Ctrl+C to stop the server\n")
-        app.run(debug=debug, port=port, host=host, use_reloader=False)
-    except OSError as e:
-        if "Address already in use" in str(e):
-            print(f"\n❌ Port {port} is already in use!")
-            print(f"   Try using a different port or stop the process using port {port}")
-            print(f"   On macOS: lsof -ti:{port} | xargs kill")
-        else:
-            print(f"\n❌ Error starting server: {e}")
-        raise
-    except Exception as e:
-        print(f"\n❌ Error starting server: {e}")
-        print("\nTroubleshooting:")
-        print("1. Make sure port is not already in use")
-        print("2. Check that all dependencies are installed: pip install -r requirements.txt")
-        print("3. Verify models exist: python train_models.py")
-        raise
-
+    port = int(os.environ.get('PORT', 5000))
+    host = '0.0.0.0'
+    app.run(host=host, port=port, debug=False, use_reloader=False)
