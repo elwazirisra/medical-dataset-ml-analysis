@@ -13,12 +13,14 @@ import os
 app = Flask(__name__)
 
 # Enable CORS
-frontend_url = os.environ.get('FRONTEND_URL', '*')
-if frontend_url == '*':
-    CORS(app)  # Allow all origins (dev)
-else:
-    CORS(app, resources={r"/api/*": {"origins": [frontend_url]}})
-
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://medical-dataset-ml-analysis.vercel.app/",
+            "http://localhost:3000" 
+        ]
+    }
+})
 # -----------------------------
 # Load models
 # -----------------------------

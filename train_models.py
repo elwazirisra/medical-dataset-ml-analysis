@@ -55,8 +55,8 @@ lr_test_acc = accuracy_score(y_test, lr_pipeline.predict(X_test))
 print(f"Train Accuracy: {lr_train_acc:.4f}")
 print(f"Test Accuracy: {lr_test_acc:.4f}")
 
-joblib.dump(lr_pipeline, 'models/logistic_regression.pkl')
-print("Saved: models/logistic_regression.pkl")
+joblib.dump(lr_pipeline, 'backend/models/logistic_regression.pkl')
+print("Saved: backend/models/logistic_regression.pkl")
 
 # 2. Random Forest
 print("\n" + "="*50)
@@ -71,8 +71,8 @@ rf_test_acc = accuracy_score(y_test, rf_pipeline.predict(X_test))
 print(f"Train Accuracy: {rf_train_acc:.4f}")
 print(f"Test Accuracy: {rf_test_acc:.4f}")
 
-joblib.dump(rf_pipeline, 'models/random_forest.pkl')
-print("Saved: models/random_forest.pkl")
+joblib.dump(rf_pipeline, 'backend/models/random_forest.pkl')
+print("Saved: backend/models/random_forest.pkl")
 
 # 3. Gradient Boosting
 print("\n" + "="*50)
@@ -87,8 +87,8 @@ gb_test_acc = accuracy_score(y_test, gb_pipeline.predict(X_test))
 print(f"Train Accuracy: {gb_train_acc:.4f}")
 print(f"Test Accuracy: {gb_test_acc:.4f}")
 
-joblib.dump(gb_pipeline, 'models/gradient_boosting.pkl')
-print("Saved: models/gradient_boosting.pkl")
+joblib.dump(gb_pipeline, 'backend/models/gradient_boosting.pkl')
+print("Saved: backend/models/gradient_boosting.pkl")
 
 # Save feature names and metadata
 metadata = {
@@ -101,8 +101,8 @@ metadata = {
         'malignant': int(np.sum(y == 1))
     }
 }
-joblib.dump(metadata, 'models/metadata.pkl')
-print("Saved: models/metadata.pkl")
+joblib.dump(metadata, 'backend/models/metadata.pkl')
+print("Saved: backend/models/metadata.pkl")
 
 # Save dataset statistics for slider ranges
 feature_stats = {}
@@ -113,8 +113,8 @@ for i, feature in enumerate(feature_names):
         'mean': float(X[:, i].mean()),
         'std': float(X[:, i].std())
     }
-joblib.dump(feature_stats, 'models/feature_stats.pkl')
-print("Saved: models/feature_stats.pkl")
+joblib.dump(feature_stats, 'backend/models/feature_stats.pkl')
+print("Saved: backend/models/feature_stats.pkl")
 
 # Get top features from Logistic Regression
 lr_coef = lr_pipeline.named_steps['classifier'].coef_[0]
@@ -125,8 +125,8 @@ feature_importance_lr = pd.DataFrame({
 }).sort_values('abs_coefficient', ascending=False)
 
 top_features = feature_importance_lr.head(10)['feature'].tolist()
-joblib.dump(top_features, 'models/top_features.pkl')
-print("Saved: models/top_features.pkl")
+joblib.dump(top_features, 'backend/models/top_features.pkl')
+print("Saved: backend/models/top_features.pkl")
 
 print("\n" + "="*50)
 print("Model training complete!")
