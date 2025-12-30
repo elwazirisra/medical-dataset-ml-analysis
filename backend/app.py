@@ -8,6 +8,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import os
+from sklearn.datasets import load_breast_cancer
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -163,11 +164,11 @@ def predict_all():
 
 @app.route('/api/dataset', methods=['GET'])
 def get_dataset():
-    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data/breast_cancer_wisconsin.csv'))
-    df = data.copy()
+    d = load_breast_cancer()
     return jsonify({
-        'features': df.columns.tolist(),
-        'data': df.values.tolist()
+        "features": d.feature_names.tolist(),
+        "data": d.data.tolist(),
+        "target": d.target.tolist()
     })
 
 # -----------------------------
