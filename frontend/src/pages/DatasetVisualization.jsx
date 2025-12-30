@@ -75,10 +75,10 @@ function DatasetVisualization() {
 
   return (
     <div className="page-container">
-      <h1 className="page-title">📊 Dataset Visualization</h1>
+      <h1 className="page-title">Dataset Visualization</h1>
       <p className="page-subtitle">Explore the characteristics of the Breast Cancer Wisconsin dataset.</p>
 
-      <h2>📈 Class Distribution</h2>
+      <h2>Class Distribution</h2>
       <div className="grid-2">
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
@@ -119,7 +119,7 @@ function DatasetVisualization() {
         </div>
       </div>
 
-      <h2>📉 Feature Distributions</h2>
+      <h2>Feature Distributions</h2>
       <p>Select features to visualize their distributions:</p>
       <div className="feature-selector">
         <select

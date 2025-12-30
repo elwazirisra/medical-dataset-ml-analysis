@@ -37,7 +37,7 @@ function Home() {
   return (
     <div className="page-container">
       <div className="home-hero">
-        <h1 className="page-title">🔬 Breast Cancer ML Explainability Demo</h1>
+        <h1 className="page-title">Breast Cancer ML Explainability Demo</h1>
         <p className="hero-subtitle">
           An interactive educational demonstration exploring how machine learning models 
           make predictions and explain feature influence in medical diagnosis.
@@ -47,7 +47,7 @@ function Home() {
       <div className="stats-section">
         <h2 className="section-title">Dataset Overview</h2>
         <div className="stats-grid">
-          <div className="stat-card">
+          <div className="stat-card-features">
             <div className="stat-icon">📊</div>
             <div className="stat-value">{metadata.n_samples}</div>
             <div className="stat-label">Total Samples</div>
@@ -72,7 +72,7 @@ function Home() {
 
       <div className="grid-2" style={{ marginTop: '3rem' }}>
         <div className="info-card">
-          <h2 className="card-title">📋 About the Dataset</h2>
+          <h2 className="card-title">About the Dataset</h2>
           <div className="card-content">
             <div className="dataset-header">
               <h3>Breast Cancer Wisconsin (Diagnostic) Dataset</h3>
@@ -117,7 +117,7 @@ function Home() {
         </div>
         
         <div className="info-card">
-          <h2 className="card-title">🎯 Purpose of This Demo</h2>
+          <h2 className="card-title">Purpose of This Demo</h2>
           <div className="card-content">
             <p className="purpose-intro">
               This interactive application demonstrates key concepts in machine learning explainability:
