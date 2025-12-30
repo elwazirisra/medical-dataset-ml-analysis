@@ -163,7 +163,7 @@ def predict_all():
 
 @app.route('/api/dataset', methods=['GET'])
 def get_dataset():
-    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data/Breast Tissue Impedance Measurements.csv'))
+    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data/breast_cancer_wisconsin.csv'))
     df = data.copy()
     return jsonify({
         'features': df.columns.tolist(),
