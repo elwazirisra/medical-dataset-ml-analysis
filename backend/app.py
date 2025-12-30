@@ -16,7 +16,7 @@ app = Flask(__name__)
 CORS(app, resources={
     r"/api/*": {
         "origins": [
-            "https://medical-dataset-ml-analysis.vercel.app/",
+            "https://medical-dataset-ml-analysis.vercel.app",
             "http://localhost:3000" 
         ]
     }
@@ -163,7 +163,7 @@ def predict_all():
 
 @app.route('/api/dataset', methods=['GET'])
 def get_dataset():
-    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data/raw/breast_cancer_wisconsin.csv'))
+    data = pd.read_csv(os.path.join(os.path.dirname(__file__), 'data/Breast Tissue Impedance Measurements.csv'))
     df = data.copy()
     return jsonify({
         'features': df.columns.tolist(),
