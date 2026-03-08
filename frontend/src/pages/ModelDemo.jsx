@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { getMetadata, getFeatureStats, predict } from '../services/api'
 import './ModelDemo.css'
 
@@ -17,6 +17,10 @@ function ModelDemo() {
     { value: 'gradient_boosting', label: 'Gradient Boosting', description: 'Sequential ensemble learning' }
   ]
 
+  const getFeatureLabel = (feature) =>
+    metadata?.feature_labels?.[feature] ||
+    feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -24,14 +28,23 @@ function ModelDemo() {
           getMetadata(),
           getFeatureStats()
         ])
+
         setMetadata(meta)
         setFeatureStats(stats)
         
-        // Initialize feature values with means
         const initialValues = {}
-        meta.top_features.slice(0, 10).forEach(feature => {
-          initialValues[feature] = stats[feature].mean
+        const topFeatures = Array.isArray(meta?.top_features)
+          ? meta.top_features.slice(0, 10)
+          : []
+
+        topFeatures.forEach(feature => {
+          if (stats?.[feature] && typeof stats[feature].mean === 'number') {
+            initialValues[feature] = stats[feature].mean
+          } else {
+            console.warn(`Missing stats for feature: ${feature}`)
+          }
         })
+
         setFeatureValues(initialValues)
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -69,23 +82,32 @@ function ModelDemo() {
     return <div className="page-container">Loading...</div>
   }
 
-  const top10Features = metadata.top_features.slice(0, 10)
-  const predictionClass = prediction ? (prediction.prediction === 1 ? 'Benign' : 'Malignant') : null
-  const isUncertain = prediction && Math.abs(prediction.probabilities.benign - prediction.probabilities.malignant) < 0.15
+  const top10Features = Array.isArray(metadata?.top_features)
+    ? metadata.top_features.slice(0, 10).filter(feature => featureStats?.[feature])
+    : []
+
+  const predictionClass = prediction ? (prediction.prediction === 1 ? 'Malignant' : 'Benign') : null
+
+  const hasProbabilities =
+    prediction?.probabilities &&
+    typeof prediction.probabilities.benign === 'number' &&
+    typeof prediction.probabilities.malignant === 'number'
+
+  const isUncertain = hasProbabilities
+    ? Math.abs(prediction.probabilities.benign - prediction.probabilities.malignant) < 0.15
+    : false
+
   const predictionBoxClass = isUncertain ? 'uncertain' : (predictionClass === 'Benign' ? 'benign' : 'malignant')
 
-  // Prepare feature importance data for chart
   const featureImportanceData = prediction?.feature_importance
     ? Object.entries(prediction.feature_importance)
         .map(([feature, value]) => ({
-          feature: feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          coefficient: selectedModel === 'logistic_regression' ? value : Math.abs(value), // For tree models, show absolute importance
+          feature: getFeatureLabel(feature),
+          coefficient: selectedModel === 'logistic_regression' ? value : Math.abs(value),
         }))
         .sort((a, b) => Math.abs(b.coefficient) - Math.abs(a.coefficient))
         .slice(0, 15)
     : []
-
-  const selectedModelInfo = modelOptions.find(m => m.value === selectedModel)
 
   return (
     <div className="page-container">
@@ -122,16 +144,21 @@ function ModelDemo() {
         </div>
 
         <div className="sliders-grid">
-          {top10Features.map((feature, index) => {
-            const currentValue = featureValues[feature] || featureStats[feature].mean
-            const stats = featureStats[feature]
-            const percentage = ((currentValue - stats.min) / (stats.max - stats.min)) * 100
+          {top10Features.map((feature) => {
+            const stats = featureStats?.[feature]
+            if (!stats) return null
+
+            const currentValue = featureValues[feature] ?? stats.mean
+            const range = stats.max - stats.min
+            const percentage = range > 0
+              ? ((currentValue - stats.min) / range) * 100
+              : 0
             
             return (
               <div key={feature} className="slider-card">
                 <div className="slider-header">
                   <span className="slider-feature-name">
-                    {feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {getFeatureLabel(feature)}
                   </span>
                   <span className="slider-value">{currentValue.toFixed(2)}</span>
                 </div>
@@ -141,7 +168,7 @@ function ModelDemo() {
                     className="slider-input"
                     min={stats.min}
                     max={stats.max}
-                    step={(stats.max - stats.min) / 100}
+                    step={range > 0 ? range / 100 : 0.01}
                     value={currentValue}
                     onChange={(e) => handleSliderChange(feature, e.target.value)}
                     style={{
@@ -169,7 +196,7 @@ function ModelDemo() {
         </div>
       </div>
 
-      {prediction && (
+      {prediction && hasProbabilities && (
         <>
           <div className="prediction-section">
             <h2 className="section-title"> Prediction Results</h2>
@@ -270,14 +297,14 @@ function ModelDemo() {
                   <YAxis 
                     dataKey="feature" 
                     type="category" 
-                    width={200}
+                    width={260}
                     stroke="#6c757d"
                     tick={{ fill: '#6c757d', fontSize: 12 }}
                   />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: 'white', 
-                      border: '1px solidrgb(102, 104, 106)',
+                      border: '1px solid rgb(102, 104, 106)',
                       borderRadius: '8px',
                       padding: '10px'
                     }}
@@ -290,9 +317,6 @@ function ModelDemo() {
                       let fillColor = '#667eea'
                       if (selectedModel === 'logistic_regression') {
                         fillColor = entry.coefficient > 0 ? '#dc3545' : '#28a745'
-                      } else {
-                        // For tree-based models, use a gradient of one color
-                        fillColor = '#667eea'
                       }
                       return (
                         <Cell 
@@ -325,4 +349,3 @@ function ModelDemo() {
 }
 
 export default ModelDemo
-

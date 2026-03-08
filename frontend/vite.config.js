@@ -9,8 +9,6 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_API_URL?.replace('/api', '') || 'http://127.0.0.1:5000',
         changeOrigin: true,
-        // In development, proxy to local backend
-        // In production, VITE_API_URL should point to deployed backend
       }
     }
   },
